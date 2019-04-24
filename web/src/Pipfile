@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+
+[packages]
+uvicorn = "*"
+starlette = "*"
+aiofiles = "*"
+python-arango = "*"
+jinja2 = ">=2.10.1"
+
+[requires]
+python_version = "3.6"

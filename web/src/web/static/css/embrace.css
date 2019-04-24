@@ -1,0 +1,3 @@
+.cui .dropdown > .btn::after, .cui .dropdown > a::after {
+    content: "";
+}
