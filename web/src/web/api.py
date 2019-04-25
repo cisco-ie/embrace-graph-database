@@ -41,17 +41,26 @@ async def api_nodes(request):
         RETURN node
     """
     nodes = arangodb_client.aql.execute(nodes_aql)
-    return JSONResponse([node for node in nodes])
+    return JSONResponse(sorted([node for node in nodes], key=lambda x: x['_key']))
 
 @app.route('/api/v1/weights')
 async def api_weights(request):
-    return JSONResponse(["distance"])
+    weight_query = """
+    FOR connection IN Connections
+        LIMIT 1
+        RETURN ATTRIBUTES(connection, true)
+    """
+    weights = [
+        weight for weight
+        in arangodb_client.aql.execute(weight_query)
+    ][0]
+    return JSONResponse(sorted(weights))
 
 @app.route('/api/v1/topology/shortest_path')
 async def api_topology_shortest_path(request):
     shortest_path_aql = """
-    FOR vertex, edge
-        IN ANY SHORTEST_PATH
+    FOR vertex, edge IN
+        OUTBOUND SHORTEST_PATH
         @from_node TO @to_node
         GRAPH "Topology"
         OPTIONS {
@@ -138,13 +147,14 @@ async def api_topology_el_grapho(request):
         }
     )
 
-@app.route('/api/v1/topology/closeness')
-async def api_topology_closeness(request):
+@app.route('/api/v1/topology/algorithms')
+async def api_topology_algorithms(request):
+    algorithm = request.query_params['algorithm']
     db_pregel = arangodb_client.pregel
     job_id = db_pregel.create_job(
         graph='Topology',
-        algorithm='effectivecloseness',
-        result_field='closeness'
+        algorithm=algorithm,
+        result_field=algorithm
     )
     while db_pregel.job(job_id)['state'] != 'done':
         time.sleep(0.5)
@@ -153,9 +163,9 @@ async def api_topology_closeness(request):
         RETURN {
             "id": node._id,
             "label": node._key,
-            "value": node.closeness
+            "value": node.%s
         }
-    """
+    """ % (algorithm)
     nodes = [
         node for node
         in arangodb_client.aql.execute(node_aql)
